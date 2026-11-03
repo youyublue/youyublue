@@ -1,0 +1,8 @@
+{
+  "name": "cloud-home",
+  "private": true,
+  "description": "给云朵送一程 — render pipeline dependencies",
+  "dependencies": {
+    "lxgw-wenkai-webfont": "1.7.0"
+  }
+}
