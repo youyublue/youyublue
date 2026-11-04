@@ -523,7 +523,8 @@ function shotRun(t) {
     flower(sx, sy, f.s, f.c, t, f.ph, .6);
   }
   const slope = clamp((gx - 2200) / 600, 0, 1);
-  girlSide(760, 860, 3.2, { phase: runPhase(t), t, lean: .12 + .12 * slope, smile: .8 }, (lx, ly) => drawKid(lx + 1, ly + 6 + Math.sin(runPhase(t) * 2) * .6, 12, { grey: .7, t, look: [.6, -.4], happy: 1, blush: .8, px: 3.2 }));
+  const grade = .4 / (1 + Math.exp(-(gx - 2300) / 250));   // ground rise per unit, = -runG'(x)
+  girlSide(760, 860, 3.2, { phase: runPhase(t), t, lean: .12 + .12 * slope, smile: .8, slope: grade }, (lx, ly) => drawKid(lx + 1, ly + 6 + Math.sin(runPhase(t) * 2) * .6, 12, { grey: .7, t, look: [.6, -.4], happy: 1, blush: .8, px: 3.2 }));
   for (const f of RN.fg) {
     const span = 26 * 660, sx = ((f.x - cX * 1.6) % span + span) % span - 300; if (sx < -320 || sx > W + 20) continue;
     const tf = RN.tufts[f.k]; ctx.save(); ctx.translate(sx + 150, H + 40); ctx.scale(f.flip ? -f.s : f.s, f.s); ctx.globalAlpha = .8; ctx.drawImage(tf, -150, -640); ctx.restore();

@@ -168,20 +168,35 @@ function girlFront(x, y, S, p) {
 // Side view, facing right, running or walking. kidDraw(x, y, s) is called
 // between the body and the near arm so the cloud sits in her arms.
 function girlSide(x, y, S, p, kidDraw) {
-  p = Object.assign({ phase: 0, run: 1, t: 0, lean: .12, eye: 1, smile: .7, wind: 1 }, p);
+  p = Object.assign({ phase: 0, run: 1, t: 0, lean: .12, eye: 1, smile: .7, wind: 1, slope: 0 }, p);
   ctx.save(); ctx.translate(x, y); ctx.scale(S, S); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const ph = p.phase, t = p.t, bob = -Math.abs(Math.cos(ph)) * 2.4 * p.run + 1.2 * p.run;
-  const hip = [0, -30.5 + bob];
+  const ph = p.phase, t = p.t;
+  // Leg pose for phase phi. Thigh swings forward with sin(phi); the foot moves
+  // back (stance) while cos(phi) < 0, so the knee stays almost straight then,
+  // and folds up during the forward swing (cos(phi) > 0) to lift the foot.
+  const legPose = (phi, hipY) => {
+    const th = .55 * Math.sin(phi) * p.run;
+    const kb = (.08 + 1.15 * Math.pow(Math.max(0, Math.cos(phi)), 1.3)) * p.run;
+    const knee = [Math.sin(th) * 14, hipY + Math.cos(th) * 14];
+    const sa = th - kb, foot = [knee[0] + Math.sin(sa) * 13.5, knee[1] + Math.cos(sa) * 13.5];
+    return { knee, foot, sa };
+  };
+  // Lift the body so the supporting foot rests exactly on the ground, which
+  // rises by `slope` per unit to the right (ground y = -slope * x). This also
+  // gives the natural up-and-down bounce of a run.
+  const restHip = -30.5, onGround = q => q.foot[1] + p.slope * q.foot[0];
+  const lowest = Math.max(onGround(legPose(ph, restHip)), onGround(legPose(ph + Math.PI, restHip)));
+  const bob = -(lowest + 2.4) * (p.run > 0 ? 1 : 0);
+  const hip = [0, restHip + bob];
   const leg = (phi, far) => {
-    const th = .62 * Math.sin(phi) * p.run;
-    const kb = (.12 + .95 * Math.max(0, Math.sin(phi - 1.5))) * p.run;
-    const knee = [hip[0] + Math.sin(th) * 14, hip[1] + Math.cos(th) * 14];
-    const sa = th - kb * 1.5, foot = [knee[0] + Math.sin(sa) * 13.5, knee[1] + Math.cos(sa) * 13.5];
+    const { knee, foot, sa } = legPose(phi, hip[1]);
     ctx.strokeStyle = far ? SKIN_SH : SKIN; ctx.lineWidth = 4.4;
     ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(knee[0], knee[1]); ctx.lineTo(foot[0], foot[1]); ctx.stroke();
     const sk = [lerp(knee[0], foot[0], .55), lerp(knee[1], foot[1], .55)];
     ctx.strokeStyle = far ? '#e2d8ca' : SOCK; ctx.lineWidth = 4.7; ctx.beginPath(); ctx.moveTo(sk[0], sk[1]); ctx.lineTo(foot[0], foot[1]); ctx.stroke();
-    ctx.fillStyle = far ? '#5f3926' : SHOE; ctx.beginPath(); ctx.ellipse(foot[0] + 2, foot[1] + .6, 4.7, 2.5, -sa * .5, 0, 6.2832); ctx.fill();
+    // shoe stays flat on the ground in stance and tips up with the shin in swing
+    const tip = Math.max(0, Math.cos(phi)) * (sa + .3);
+    ctx.fillStyle = far ? '#5f3926' : SHOE; ctx.beginPath(); ctx.ellipse(foot[0] + 2, foot[1] + .4, 4.7, 2.5, -tip * .6, 0, 6.2832); ctx.fill();
   };
   leg(ph + Math.PI, true); leg(ph, false);
   ctx.save(); ctx.translate(hip[0], hip[1]); ctx.rotate(p.lean); ctx.translate(-hip[0], -hip[1]);
