@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>天気雨 · Sunshower</title>
+<meta name="description" content="A short hand-drawn-style anime film: on a summer afternoon over a flooded Tokyo, a giant police robot shelters a kingfisher from a sunshower.">
+<style>
+:root{--ink:#fbf7ee;--dim:rgba(251,247,238,.66);--line:rgba(251,247,238,.3);--bg:#0b1020;--accent:#ffd27a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Noto Serif CJK JP",Georgia,serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+#frame{position:relative;width:min(100vw,calc(100vh * 1.8462));width:min(100dvw,calc(100dvh * 1.8462));aspect-ratio:1920/1040;background:#000;overflow:hidden;cursor:pointer}
+video,#poster{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+#poster{transition:opacity .9s ease}
+#grain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.05;mix-blend-mode:overlay}
+#veil{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:16px;background:radial-gradient(ellipse at center,rgba(11,16,32,.08),rgba(11,16,32,.45))}
+#veil[hidden]{display:none}
+h1 small{display:block;font-size:.3em;letter-spacing:.5em;margin-top:.6em;opacity:.85}
+h1{margin:0;font-weight:400;font-size:clamp(24px,4.4vw,56px);letter-spacing:.22em;padding-left:.22em;text-shadow:0 2px 24px rgba(10,30,70,.7)}
+button{font:inherit;color:var(--ink);background:rgba(12,18,36,.42);border:1px solid var(--line);border-radius:999px;padding:11px 24px;font-size:clamp(14px,1.5vw,17px);letter-spacing:.08em;cursor:pointer;min-height:44px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .2s,border-color .2s}
+button:hover{background:rgba(255,210,122,.2);border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#sound{position:absolute;right:clamp(10px,2vw,24px);top:clamp(10px,2vw,24px);opacity:0;pointer-events:none}
+#sound.on{opacity:1;pointer-events:auto}
+#bar{position:absolute;left:0;right:0;bottom:0;padding:26px clamp(10px,2vw,22px) 12px;display:flex;align-items:center;gap:14px;background:linear-gradient(transparent,rgba(6,10,22,.6));opacity:0;transition:opacity .5s ease}
+#frame.show #bar{opacity:1}
+#track{flex:1;height:18px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+#rail{position:relative;width:100%;height:2px;background:var(--line);border-radius:2px}
+#fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);border-radius:2px}
+.ic{padding:0;width:40px;height:40px;min-height:40px;flex:none;display:grid;place-items:center;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.ic svg{width:20px;height:20px;fill:var(--ink)}
+#load{position:absolute;inset:auto 0 12% 0;text-align:center;color:var(--dim);font-size:15px;letter-spacing:.1em}
+@media (prefers-reduced-motion:reduce){#grain{display:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="frame" aria-label="Sunshower, an animated short">
+    <video id="v" playsinline preload="auto"></video>
+    <img id="poster" alt="A white police robot stands waist-deep in a flooded, overgrown street, a kingfisher on its palm" src="data:image/jpeg;base64,{{POSTER}}">
+    <canvas id="grain" width="256" height="139"></canvas>
+    <div id="veil" hidden><h1 id="ttl">天気雨<small>SUNSHOWER</small></h1><button id="go">Watch with sound</button></div>
+    <div id="load">The rain is on its way…</div>
+    <button id="sound">Turn on sound</button>
+    <div id="bar">
+      <button class="ic" id="pp" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+      <div id="track" role="slider" aria-label="Progress" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="rail"><div id="fill"></div></div></div>
+      <button class="ic" id="fs" aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5v2H6v3zm11-5h5v5h-2V6h-3zM6 15v3h3v2H4v-5zm12 3v-3h2v5h-5v-2z"/></svg></button>
+    </div>
+  </div>
+</div>
+<script type="text/plain" id="reel">{{REEL}}</script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+  var v = $('v'), veil = $('veil'), poster = $('poster'), frame = $('frame'), snd = $('sound'), fill = $('fill'), go = $('go'), tr = $('track'), pp = $('pp');
+  var idle = 0, ended = false, begun = false;
+  var PAUSE = 'M7 5h4v14H7zM13 5h4v14h-4z', PLAY = 'M8 5l11 7-11 7z';
+
+  function setIcon(playing) { pp.innerHTML = '<svg viewBox="0 0 24 24"><path d="' + (playing ? PAUSE : PLAY) + '"/></svg>'; pp.setAttribute('aria-label', playing ? 'Pause' : 'Play'); }
+  // The film is stored as base64 text; turn it into a Blob URL once.
+  function decode() {
+    var el = $('reel'), bin = atob(el.textContent.trim()); el.textContent = '';
+    var a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([a], { type: 'video/mp4' }));
+  }
+  function hidePoster() { poster.style.opacity = 0; setTimeout(function () { poster.style.display = 'none'; }, 900); veil.hidden = true; begun = true; }
+  function syncSound() { snd.classList.toggle('on', v.muted && !v.paused); }
+  function showVeil(label) { go.textContent = label; veil.hidden = false; }
+  function wake() {
+    frame.classList.add('show'); frame.style.cursor = 'pointer'; clearTimeout(idle);
+    idle = setTimeout(function () { if (!v.paused) { frame.classList.remove('show'); frame.style.cursor = 'none'; } }, 2200);
+  }
+  function replay() { ended = false; v.currentTime = 0; v.muted = false; veil.hidden = true; v.play(); }
+  function toggle() { if (ended) return replay(); if (v.paused) v.play(); else v.pause(); }
+
+  setTimeout(function () {
+    v.src = decode(); $('load').style.display = 'none';
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return showVeil('Watch with sound');
+    v.muted = false;
+    v.play().catch(function () { v.muted = true; return v.play(); }).catch(function () { if (!begun) showVeil('Watch with sound'); });
+    setTimeout(function () { if (!begun) showVeil('Watch with sound'); }, 2500);
+  }, 30);
+
+  go.addEventListener('click', function (e) {
+    e.stopPropagation(); if (ended) return replay();
+    v.muted = false; var r = v.play(); if (r && r.catch) r.catch(function () { v.muted = true; v.play(); });
+  });
+  snd.addEventListener('click', function (e) { e.stopPropagation(); v.muted = false; if (v.currentTime < 10) v.currentTime = 0; snd.classList.remove('on'); v.play(); });
+  frame.addEventListener('click', function (e) { if (e.target.closest('button,#track')) return; toggle(); });
+  frame.addEventListener('mousemove', wake);
+  frame.addEventListener('touchstart', wake, { passive: true });
+  pp.addEventListener('click', function (e) { e.stopPropagation(); toggle(); });
+  $('fs').addEventListener('click', function (e) {
+    e.stopPropagation(); var d = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    else if (frame.requestFullscreen) frame.requestFullscreen();
+    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+  });
+  v.addEventListener('play', function () { setIcon(true); ended = false; });
+  v.addEventListener('playing', function () { hidePoster(); syncSound(); });
+  v.addEventListener('volumechange', syncSound);
+  v.addEventListener('pause', function () { setIcon(false); frame.classList.add('show'); syncSound(); });
+  v.addEventListener('timeupdate', function () { var p = v.duration ? v.currentTime / v.duration * 100 : 0; fill.style.width = p + '%'; tr.setAttribute('aria-valuenow', Math.round(p)); });
+  v.addEventListener('ended', function () { ended = true; showVeil('Watch again'); frame.classList.add('show'); });
+
+  function seekAt(x) { var r = $('rail').getBoundingClientRect(); v.currentTime = Math.max(0, Math.min(1, (x - r.left) / r.width)) * (v.duration || 0); }
+  var dragging = false;
+  tr.addEventListener('pointerdown', function (e) { e.stopPropagation(); dragging = true; tr.setPointerCapture(e.pointerId); seekAt(e.clientX); });
+  tr.addEventListener('pointermove', function (e) { if (dragging) seekAt(e.clientX); });
+  tr.addEventListener('pointerup', function () { dragging = false; });
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.key === 'k') { e.preventDefault(); toggle(); }
+    else if (e.key === 'ArrowRight') { v.currentTime = Math.min(v.duration || 0, v.currentTime + 5); wake(); }
+    else if (e.key === 'ArrowLeft') { v.currentTime = Math.max(0, v.currentTime - 5); wake(); }
+    else if (e.key === 'm') { v.muted = !v.muted; snd.classList.remove('on'); }
+    else if (e.key === 'f') $('fs').click();
+  });
+
+  // Film grain, generated here instead of stored in the file.
+  var g = $('grain'), c = g.getContext('2d'), w = g.width, h = g.height, pool = [];
+  for (var k = 0; k < 6; k++) {
+    var d = c.createImageData(w, h);
+    for (var i = 0; i < d.data.length; i += 4) { var q = 128 + (Math.random() - .5) * 190; d.data[i] = d.data[i + 1] = d.data[i + 2] = q; d.data[i + 3] = 255; }
+    pool.push(d);
+  }
+  var idx = 0, last = 0;
+  (function tick(t) { requestAnimationFrame(tick); if (t - last < 84 || v.paused) return; last = t; idx = (idx + 1 + Math.floor(Math.random() * 4)) % 6; c.putImageData(pool[idx], 0, 0); })(0);
+})();
+</script>
+</body>
+</html>
