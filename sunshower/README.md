@@ -7,6 +7,7 @@ No people appear. Every frame is drawn by code, and the score and sound effects 
 ## Files
 
 - [`index.html`](index.html): the film in one self-contained page. The video is embedded as base64, so it plays offline. The page has its own player with play/pause, seek, fullscreen and sound controls. Keys: `Space`/`K` play/pause, `←`/`→` skip 5 s, `M` mute, `F` fullscreen.
+- [`cover.png`](cover.png) / [`cover-title.png`](cover-title.png): cover art (1920×1040), without and with the title. Regenerate with `node src/cover.js <outDir> [t]`.
 - [`sunshower.mp4`](sunshower.mp4): the same film as a regular video (1920×1040, about 1.85:1, 24 fps, H.264 + AAC).
 
 ## Shots

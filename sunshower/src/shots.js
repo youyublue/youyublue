@@ -440,4 +440,4 @@ function title(g, a, jp, en, dark) {
   if (en) { g.font = `500 26px ${FMIN}`; g.fillText(en.split('').join(' '), W / 2, H * .42 + 56); }
   g.restore();
 }
-window.ready = Promise.all([document.fonts.load('40px "Yusei Magic"', '警視庁特車ALPHÔNSE'), document.fonts.load('40px "Zen Old Mincho"', '天気雨おわり')]).then(() => true);
+window.ready = Promise.all([document.fonts.load('40px "Yusei Magic"', '警視庁特車ALPHÔNSE'), document.fonts.load('40px "Zen Old Mincho"', '天気雨おわりある夏の午後、水没した東京で')]).then(() => true);
