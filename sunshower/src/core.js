@@ -1,5 +1,8 @@
 // core.js — maths, colour, camera, convex hulls and the hand-inked stroke.
 'use strict';
+// All 2D canvases are CPU-backed: under the software GL used for offline
+// rendering, large GPU-backed canvases can silently lose their contents.
+(() => { const gc = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, o) { return t === '2d' ? gc.call(this, t, Object.assign({ willReadFrequently: true }, o || {})) : gc.call(this, t, o); }; })();
 const W = 1920, H = 1040, TAU = Math.PI * 2;
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const lerp = (a, b, t) => a + (b - a) * t;

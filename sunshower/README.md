@@ -4,8 +4,6 @@ An 81-second anime short in the style of hand-drawn Japanese summer films. It's 
 
 No people appear. Every frame is drawn by code, and the score and sound effects are synthesized. No external images or recordings are used.
 
-> **Status: work in progress.** The source renders individual shots, but the full film has not been rendered yet, so `index.html` and `sunshower.mp4` don't exist yet. Known open issues: buildings are missing from the opening wide shot's background plate, the koban is drawn under the water layer, and the rainbow is too faint. Run `./build.sh` once these are fixed.
-
 ## Files
 
 - [`index.html`](index.html): the film in one self-contained page. The video is embedded as base64, so it plays offline. The page has its own player with play/pause, seek, fullscreen and sound controls. Keys: `Space`/`K` play/pause, `←`/`→` skip 5 s, `M` mute, `F` fullscreen.

@@ -169,7 +169,7 @@ function drawRainbow(g, cam, k, rise) {
   const anti = V.mul(SUN, -1);
   const a1 = V.norm(V.cross(anti, [0, 1, 0])), a2 = V.cross(a1, anti);
   const bands = ['#e2473d', '#f49a3a', '#f7de58', '#86d36c', '#58aae8', '#7c6fd8'];
-  const R42 = 42 * Math.PI / 180, bw = 2.7 * Math.PI / 180;
+  const R42 = 42 * Math.PI / 180, bw = 4.2 * Math.PI / 180;
   const c = scratch('bow'); const cg = c.g;
   cg.lineCap = 'butt'; cg.lineJoin = 'round';
   for (let i = 0; i < bands.length; i++) {
@@ -182,14 +182,14 @@ function drawRainbow(g, cam, k, rise) {
       const s = cam.proj(V.add(cam.pos, V.mul(dir, 3000)));
       first ? cg.moveTo(s[0], s[1]) : cg.lineTo(s[0], s[1]); first = false;
     }
-    cg.strokeStyle = bands[i]; cg.lineWidth = cam.f * bw / 6 * 1.25; cg.globalAlpha = .5; cg.stroke();
+    cg.strokeStyle = bands[i]; cg.lineWidth = cam.f * bw / 6 * 1.3; cg.globalAlpha = .85; cg.stroke();
   }
   // soft and fading toward the horizon
   const hy = cam.horizon();
   cg.globalAlpha = 1; cg.globalCompositeOperation = 'destination-in';
   const gr = cg.createLinearGradient(0, hy - 360, 0, hy); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,.12)');
   cg.fillStyle = gr; cg.fillRect(0, 0, W, H);
-  g.save(); g.globalCompositeOperation = 'screen'; g.globalAlpha = k; g.filter = 'blur(5px)'; g.drawImage(c, 0, 0); g.filter = 'blur(1.5px)'; g.globalAlpha = k * .6; g.drawImage(c, 0, 0); g.restore();
+  g.save(); g.globalCompositeOperation = 'screen'; g.globalAlpha = k; g.filter = 'blur(5px)'; g.drawImage(c, 0, 0); g.filter = 'blur(1.5px)'; g.globalAlpha = k * .8; g.drawImage(c, 0, 0); g.restore();
 }
 
 // floating things on the surface: lily pads, petals, leaves (bob gently)

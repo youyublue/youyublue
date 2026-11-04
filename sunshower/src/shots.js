@@ -114,11 +114,10 @@ function birdPlace(t, A) {
   if (hu > 0) { const u = ease(hu); p = V.lerp(base, tipL, u); p[1] += Math.sin(u * Math.PI) * .14; yaw = lerp(-1.25, -1.6, u); }
   if (t > 71.05) { // flight toward the rainbow: rises and banks away
     const u = (t - 71.05);
-    const path = [tipL, V.add(tipL, [-.6, .9, 1.2]), V.add(tipL, [-1.8, 3.2, 6]), V.add(tipL, [-5, 9, 22]), V.add(tipL, [-10, 17, 52])];
-    p = arc(path, clamp(u / 5.4, 0, 1) * .999);
-    yaw = .1;
+    const path = [tipL, V.add(tipL, [1.0, .7, .6]), V.add(tipL, [2.8, 2.3, 2.2]), V.add(tipL, [5.5, 5.5, 8]), V.add(tipL, [8.5, 10.5, 20]), V.add(tipL, [11, 16.5, 38])];
+    p = arc(path, clamp(u / 6.2, 0, 1) * .999);
+    yaw = .7 - .45 * clamp(u / 4, 0, 1);
   }
-  if (t > 73.5 && t < 78) yaw = .15;
   return M.chain(M.tr(p[0], p[1], p[2]), M.rot('y', yaw));
 }
 
@@ -204,7 +203,7 @@ function drawWorld(g, t, key, view, o) {
     g.restore();
   }
   if (o.rainbow) drawRainbow(g, cam, o.rainbow.k, o.rainbow.rise);
-  blitPlate(g, P, P.pl.city, cam, blur);
+  let cityDrawn = false;
 
   // reflection texture: mirrored plates + mirrored robot
   const hy = cam.horizon();
@@ -220,18 +219,22 @@ function drawWorld(g, t, key, view, o) {
     const ripples = drawRippleList(cam, tq);
     const wcv = GLW.render({ cam, refl: rf, sub, t: tq, tq, rain: wx.rain, ripples, glit: o.glit === undefined ? 1 : o.glit, sunK: wx.sunK * (o.sunK || 1), caus: .55 * (1 - .4 * wx.veil) + .3 * wx.burst, dim: 0 });
     g.save(); if (blur) g.filter = `blur(${blur * .7}px)`; g.drawImage(wcv, 0, 0); g.restore();
+    // everything standing on the water is in front of the surface
+    blitPlate(g, P, P.pl.city, cam, blur); cityDrawn = true;
     // on the surface
     drawFloaters(g, cam, t);
     if (wx.rain > 0) drawRipples(g, cam, t, { alpha: o.ripA || 1 });
     if (o.glints !== false && sun[2] > 0) drawGlints(g, cam, t, { k: clamp(wx.sunK, 0, 1.4) * (o.glintK || 1), n: o.glintN });
     waterline(g, cam, Rb, t, lw);
   }
+  if (!cityDrawn) blitPlate(g, P, P.pl.city, cam, blur);
   // far rain (behind the robot), the robot, the bird, near rain
   const rd = V.len(V.sub([0, 2, 0], cam.pos));
   if (wx.rain > 0) drawRain(g, cam, t, { minD: rd, sunK: wx.sunK, alpha: .8, maxD: o.rainMax || 45, far: true, landY: o.landY });
+  if (o.birdBehind && !o.noBird) drawBird(g, cam, bM, bA, { lw: o.birdLw || lw * .95 });
   const info = drawParts(g, cam, Rb.parts, { lw, clamp: hy < H + 50 ? 'above' : null });
   if (o.after) o.after(g, cam, Rb, info);
-  if (!o.noBird) {
+  if (!o.noBird && !o.birdBehind) {
     if (!bA.flying) contactShadow(g, cam, bM, info, bA);
     drawBird(g, cam, bM, bA, { lw: o.birdLw || lw * .95 });
   }
@@ -368,7 +371,7 @@ const SHOTS = [
   }],
   [56.6, 63.2, (g, t, u) => { // rain stops, the sun bursts out, a rainbow rises
     const rise = sstep(57.4, 61.8, t);
-    const r = drawWorld(g, t, 'R', { py: lerp(60, -60, cushion(u)) }, { lw: 1.9, rainbow: { k: sstep(57.2, 59, t), rise }, glints: false, noBird: false });
+    const r = drawWorld(g, t, 'R', { py: lerp(60, -60, cushion(u)) }, { lw: 1.9, rainbow: { k: sstep(57.2, 59, t), rise }, glints: false, birdBehind: true });
   }],
   [63.2, 67.2, (g, t, u) => { // the hand lifts away, the bird hops to the fingertip
     drawWorld(g, t, 'E', { z: 1.0, px: 20 }, { lw: 2.6, blur: 3.5, birdLw: 2.6 });
@@ -377,7 +380,15 @@ const SHOTS = [
     drawWorld(g, t, 'C2', { z: lerp(1, 1.02, u) }, { lw: 2.3, blur: 1 });
   }],
   [70.2, 81, (g, t, u) => { // the bird flies off into the rainbow; a small wave
-    drawWorld(g, t, 'R', { py: -60 + lerp(0, -40, ease(u)) }, { lw: 1.9, rainbow: { k: 1, rise: 1 }, glints: false });
+    drawWorld(g, t, 'R', { py: -60 + lerp(0, -40, ease(u)) }, { lw: 1.9, rainbow: { k: 1, rise: 1 }, glints: false, birdBehind: true, afterBird: (g2, cam, Rb, info, bM, bA) => {
+      if (t < 71.1) return;
+      // a faint glitter trail so the eye can follow her into the rainbow
+      for (let k = 1; k <= 10; k++) {
+        const tt = TW(t) - k * .07; if (tt < 71.05) break;
+        const q = cam.proj(M.ap(birdPlace(tt, Rb.A), [0, .08, 0]));
+        sparkle(g2, q[0] + Math.sin(k * 2.1) * 4, q[1] + Math.cos(k * 1.7) * 4, 12 - k * .8, .9 * (1 - k / 11));
+      }
+    } });
   }],
 ];
 
